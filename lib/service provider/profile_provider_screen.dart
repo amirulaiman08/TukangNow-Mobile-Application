@@ -1,0 +1,245 @@
+
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:tukangnow1/constants/button.dart';
+import 'package:tukangnow1/model/worker_model.dart';
+import 'package:tukangnow1/service%20provider/login_screen.dart';
+import 'package:tukangnow1/widget/widgets.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:logger/logger.dart';
+
+class ProfileProviderScreen extends StatefulWidget {
+  const ProfileProviderScreen({Key? key}) : super(key: key);
+
+  @override
+  _ProfileProviderScreenState createState() => _ProfileProviderScreenState();
+}
+
+class _ProfileProviderScreenState extends State<ProfileProviderScreen> {
+  final Logger _logger = Logger();
+  String? provider_image;
+  /*===============  IMAGE PICKER ===============*/
+  Future<File?> pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? imageFile =
+        await picker.pickImage(source: ImageSource.gallery);
+    if (imageFile != null) {
+      return File(imageFile.path);
+    }
+    return null;
+  }
+
+  /*===============  UPLOAD IMAGE ===============*/
+  Future<String?> uploadImage(File imageFile) async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        String fileName = 'images/${user.uid}.jpg';
+        Reference ref = FirebaseStorage.instance.ref().child(fileName);
+        UploadTask uploadTask = ref.putFile(imageFile);
+        TaskSnapshot taskSnapshot = await uploadTask;
+        String downloadUrl = await taskSnapshot.ref.getDownloadURL();
+        return downloadUrl;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      _logger;
+      return null;
+    }
+  }
+  User? user = FirebaseAuth.instance.currentUser;
+  WorkerModel loggedInUser = WorkerModel();
+  
+  @override
+void initState() {
+  super.initState();
+  FirebaseFirestore.instance
+      .collection("workers")
+      .doc(user!.uid)
+      .get()
+      .then((value) {
+    this.loggedInUser = WorkerModel.fromMap(value.data());
+
+    // Get the profile image URL from the Firestore document
+    setState(() {
+      provider_image = loggedInUser.provider_image;
+    });
+  });
+}
+
+  Future<void> updateProfileImage() async {
+  File? pickedImageFile = await pickImage();
+  if (pickedImageFile != null) {
+    String? imageUrl = await uploadImage(pickedImageFile);
+    if (imageUrl != null) {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('workers')
+            .doc(user.uid)
+            .update({'provider_image': imageUrl});
+
+        // Set the profileImageUrl to the new URL
+        setState(() {
+          provider_image = imageUrl;
+        });
+
+        displayMessage('Profile image updated successfully!');
+      }
+    } else {
+      displayMessage("Failed to upload profile image.");
+    }
+  } else {
+    displayMessage("No image was selected.");
+  }
+}
+  
+  Future<void> logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => workersLoginScreen()),
+    );
+  }
+
+  void displayMessage(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(message),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(left: 20, right: 20),
+            child: Column(
+              children: [
+                CustomBackButton(pageHeader: 'Workers Profile'),
+                SizedBox(height: 30),
+             CircleAvatar(
+                  radius: 60,
+                  foregroundColor: Colors.blue,
+                  backgroundImage: provider_image != null
+                      ? NetworkImage(
+                          provider_image!) // Use the profile image URL if available
+                       :null// Use default image if not available
+                ),
+                SizedBox(height: 20),
+                Text(
+                  "${loggedInUser.name} ",
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  "${loggedInUser.email}",
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 15,
+                  ),
+                ),
+                SizedBox(height: 30),
+                Info(
+                  infoText: 'Name: ',
+                  infoData: "${loggedInUser.name} ",
+                ),
+                Info(
+                  infoText: 'Email: ',
+                  infoData: "${loggedInUser.email}",
+                ),
+                Info(
+                  infoText: 'Address: ',
+                  infoData: "${loggedInUser.address}",
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+                MyButton(
+                  onTap:
+                      updateProfileImage, // Call updateProfileImage method when tapped
+                  text: 'Upload Image',
+                ),
+          Spacer(),
+          Padding(
+          padding: EdgeInsets.all(20),
+            child: ElevatedButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all<Color>(Color.fromARGB(255, 93, 141, 187)),
+                foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
+                minimumSize:
+                    MaterialStateProperty.all<Size>(Size(double.infinity, 50)),
+                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              onPressed: () {
+                logout(context);
+              },
+              child: Text(
+                "Logout",
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class Info extends StatelessWidget {
+  final String infoText;
+  final String infoData;
+
+  Info({required this.infoText, required this.infoData});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              infoText,
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              infoData,
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(
+          height: 20,
+        ),
+      ],
+    );
+  }
+
+  
+}

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "356752764500",
+    "project_id": "tukangnow-d7830",
+    "storage_bucket": "tukangnow-d7830.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356752764500:android:a2df9920d290a5ad5607c1",
+        "android_client_info": {
+          "package_name": "com.example.tukangnow1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "356752764500-c0ke1p6s2beh97iue61bpbfojavi71u2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOeIAChfuQkWeVW1KCQ_VDWrZv8alNFDw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "356752764500-c0ke1p6s2beh97iue61bpbfojavi71u2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
